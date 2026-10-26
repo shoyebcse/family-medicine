@@ -1,0 +1,20 @@
+node_modules/
+.expo/
+dist/
+dist-*/
+target/
+.env
+.env.local
+*.log
+.idea/
+.DS_Store
+deliverables/render_tmp/
+deliverables/rendered/
+__pycache__/
+.m2/
+/tmp/pdfs/
+
+mobile-history.bundle
+# Generated Android build outputs for local Expo modules.
+mobile/modules/**/build/
+mobile/modules/**/.gradle/

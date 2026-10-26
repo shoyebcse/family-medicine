@@ -1,0 +1,2 @@
+ALTER TABLE prescriptions ADD COLUMN extraction_mode VARCHAR(16) NOT NULL DEFAULT 'openai';
+ALTER TABLE schedules ADD COLUMN sample_data BOOLEAN NOT NULL DEFAULT FALSE;

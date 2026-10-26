@@ -1,0 +1,7 @@
+// Optional local validation override. EAS keeps Expo's default NDK version.
+beforeProject { project ->
+  def installedNdk = System.getenv('MEDICINE_VALIDATION_NDK')
+  if (project == project.rootProject && installedNdk) {
+    project.ext.ndkVersion = installedNdk
+  }
+}

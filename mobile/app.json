@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Family Medicine",
+    "slug": "family-medicine",
+    "scheme": "family-medicine",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.familymedicine.preview"
+    },
+    "android": {
+      "package": "com.familymedicine.preview",
+      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM"],
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Family Medicine to photograph a prescription for your review.",
+          "photosPermission": "Allow Family Medicine to select prescription images.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "medicine-reminders-v1",
+          "color": "#267867"
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "9aa68b59-1aae-43be-8d35-58b77902fa04"
+      }
+    }
+  }
+}

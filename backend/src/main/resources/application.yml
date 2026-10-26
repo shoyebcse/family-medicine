@@ -1,0 +1,27 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${PORT:8080}
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 21MB
+      file-size-threshold: 21MB
+  application:
+    name: family-medicine-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/family_medicine}
+    username: ${DATABASE_USER:family_medicine}
+    password: ${DATABASE_PASSWORD}
+  flyway:
+    enabled: true
+  jackson:
+    default-property-inclusion: non_null
+app:
+  dev-token: ${DEV_API_TOKEN:}
+  cors-origins: ${CORS_ORIGINS:http://localhost:8081,http://127.0.0.1:8081,http://localhost:8083,http://127.0.0.1:8083,http://localhost:19006}
+prescriptions:
+  max-bytes: ${PRESCRIPTION_MAX_BYTES:10485760}
+  max-pages: ${PRESCRIPTION_MAX_PAGES:8}
+server.error.include-message: never
+server.error.include-stacktrace: never

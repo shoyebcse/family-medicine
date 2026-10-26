@@ -1,0 +1,36 @@
+Extract ALL medicines from this Indian handwritten or
+printed prescription. Return valid JSON only.
+
+{
+  "patient": {"name": null},
+  "doctor": {"name": null},
+  "date": null,
+  "medicines": [{
+    "raw": null,
+    "brand": null,
+    "strength": null,
+    "dose": null,
+    "frequency": null,
+    "pattern": null,
+    "timing": [],
+    "food": null,
+    "duration": null,
+    "sos": false,
+    "unclear": true
+  }]
+}
+
+Rules:
+- Extract every medicine from all prescription sections.
+- Recognize OD(once daily), BD(twice daily),
+  TDS(3/day), QID(4/day), HS(bedtime),
+  SOS(as needed), AC(before food), PC(after food).
+- Recognize patterns: 1-0-1, 1-1-1, 0-0-1,
+  1-0-0, 0-1-0.
+- timing: morning, afternoon, evening, bedtime,
+  or exact written times.
+- Preserve the original frequency/pattern.
+- Do not invent times, doses, units or frequencies.
+- Use null for missing/unclear values.
+- Flag uncertain medicines and instructions.
+- Never infer the dose from the strength.

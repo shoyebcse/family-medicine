@@ -1,0 +1,13 @@
+{
+  "patient": {"name": "Mrs.Naseem Bano"},
+  "doctor": {"name": "Dr. Manish Kumar Sinha"},
+  "date": "10-Sep-2024",
+  "medicines": [
+    {"raw":"TAB. SPINFREE 1-1-1 After Food - Daily - 10 Days","brand":"SPINFREE","strength":"20 MG, 40 MG","dose":"1-1-1","frequency":"Daily","pattern":null,"food":"After Food","duration":"10 Days","timing":[],"sos":false,"unclear":false},
+    {"raw":"TAB. SIBELIUM 10MG 0-0-1 After Dinner - Daily - 10 Days","brand":"SIBELIUM","strength":"10 MG","dose":"0-0-1","frequency":"Daily","pattern":null,"food":"After Dinner","duration":"10 Days","timing":[],"sos":false,"unclear":false},
+    {"raw":"TAB. ONVIT 4G CAP 1-0-0 After Breakfast - Daily - 10 Days","brand":"ONVIT","strength":"4G","dose":"1-0-0","frequency":"Daily","pattern":null,"food":"After Breakfast","duration":"10 Days","timing":[],"sos":false,"unclear":false},
+    {"raw":"SPR. DUNOASE 50 MCG/140 MCG NASAL 1-0-1 NASAL SPRAY - Daily - 10 Days","brand":"DUNOASE","strength":"50 MCG, 140 MCG","dose":"1-0-1","frequency":"Daily","pattern":null,"food":null,"duration":"10 Days","timing":[],"sos":false,"unclear":false},
+    {"raw":"TAB. DOLO 650MG 1-0-1 After Food - SOS","brand":"DOLO","strength":"650 MG","dose":"1-0-1","frequency":"SOS","pattern":null,"food":"After Food","duration":null,"timing":[],"sos":true,"unclear":false},
+    {"raw":"TAB. ALLGERA-M 0-0-1 After Dinner - Daily - 10 Days","brand":"ALLGERA-M","strength":null,"dose":"0-0-1","frequency":"Daily","pattern":null,"food":"After Dinner","duration":"10 Days","timing":[],"sos":false,"unclear":false}
+  ]
+}
