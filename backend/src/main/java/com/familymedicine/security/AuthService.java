@@ -50,12 +50,29 @@ public class AuthService {
         String normalized = email(email);
         limits.consume("login-ip:" + ip, 100, Duration.ofMinutes(15));
         limits.consume("login:" + ip + ":" + normalized, 10, Duration.ofMinutes(15));
-        var account = db.sql("SELECT id,password_hash FROM accounts WHERE email=:email").param("email", normalized)
+        var account = db.sql("SELECT id,password_hash FROM accounts WHERE email=:email AND password_hash IS NOT NULL").param("email", normalized)
             .query((r,n) -> Map.entry(r.getObject(1, UUID.class), r.getString(2))).optional();
         boolean matches = password.getBytes(StandardCharsets.UTF_8).length <= 72 &&
             passwords.matches(password, account.map(Map.Entry::getValue).orElse(dummyHash));
         if (!matches || account.isEmpty()) throw new RuleViolation("INVALID_CREDENTIALS", "Email or password is incorrect.", 401);
         return issue(account.get().getKey());
+    }
+    Session loginGoogle(GoogleOidc.Identity identity) {
+        var existing = db.sql("SELECT id FROM accounts WHERE google_subject=:subject")
+            .param("subject", identity.subject()).query(UUID.class).optional();
+        if (existing.isPresent()) return issue(existing.get());
+        UUID id = UUID.randomUUID();
+        int inserted = db.sql("""
+            INSERT INTO accounts(id,display_name,email,email_verified,google_subject,created_at)
+            VALUES(:id,:name,:email,TRUE,:subject,:now)
+            ON CONFLICT DO NOTHING
+            """).param("id", id).param("name", identity.name()).param("email", identity.email())
+            .param("subject", identity.subject()).param("now", now()).update();
+        if (inserted == 1) return issue(id);
+        return db.sql("SELECT id FROM accounts WHERE google_subject=:subject")
+            .param("subject", identity.subject()).query(UUID.class).optional().map(this::issue)
+            .orElseThrow(() -> new RuleViolation("GOOGLE_EMAIL_IN_USE",
+                "This email already belongs to an account. Use your original sign-in method.", 409));
     }
     public Challenge startPhone(String number, String ip) {
         if (!phone.available()) throw new RuleViolation("PHONE_UNAVAILABLE", "Phone sign-in is unavailable. Use email/password.", 503);

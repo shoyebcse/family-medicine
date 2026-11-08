@@ -9,15 +9,24 @@ import org.springframework.beans.factory.annotation.*;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doReturn;
 
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT, properties={
+    "GOOGLE_CLIENT_ID=integration-test.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_SECRET=integration-test",
+    "GOOGLE_CALLBACK_URL=http://localhost:8080/v1/auth/google/callback",
+    "GOOGLE_WEB_RETURN_URL=http://localhost:8081/"
+})
 @ActiveProfiles("test")
 class AuthIntegrationTest {
     @Value("${local.server.port}") int port;
     @Autowired JdbcClient db;
+    @MockitoSpyBean GoogleOidc google;
     private final JsonMapper json = JsonMapper.builder().build();
     private final HttpClient http = HttpClient.newHttpClient();
     private final String password = "fictional-test-password-123";
@@ -36,6 +45,54 @@ class AuthIntegrationTest {
         return data(response);
     }
     private String email() { return UUID.randomUUID() + "@example.invalid"; }
+    private Map<String,String> googleTicket(String subject, String email) throws Exception {
+        doReturn(new GoogleOidc.Identity(subject, email, "Google tester"))
+            .when(google).exchange(eq("provider-code"), matches("[A-Za-z0-9_-]{43}"), matches("[A-Za-z0-9_-]{43}"));
+        var startResponse = request("/v1/auth/google/start",Map.of("web",true),null);
+        assertThat(startResponse.statusCode()).isEqualTo(200);
+        var start = data(startResponse);
+        var url = URI.create(start.path("authorizationUrl").asText());
+        assertThat(url.getHost()).isEqualTo("accounts.google.com");
+        assertThat(url.getQuery()).contains("code_challenge_method=S256", "nonce=");
+        String state = Arrays.stream(url.getQuery().split("&")).filter(part -> part.startsWith("state="))
+            .findFirst().orElseThrow();
+        String callback = "/v1/auth/google/callback?" + state + "&code=provider-code";
+        var response = request(callback,null,null);
+        assertThat(response.statusCode()).isEqualTo(303);
+        var destination = URI.create(response.headers().firstValue("location").orElseThrow());
+        assertThat(destination.getHost()).isEqualTo("localhost");
+        assertThat(destination.getPort()).isEqualTo(8081);
+        assertThat(destination.getFragment()).matches("google_ticket=[A-Za-z0-9_-]{43}");
+        assertThat(request(callback,null,null).statusCode()).isEqualTo(401);
+        return Map.of("ticket",destination.getFragment().substring("google_ticket=".length()),
+            "clientSecret",start.path("clientSecret").asText());
+    }
+    @Test void googleTicketRequiresTheInitiatingClientAndCanOnlyBeUsedOnce() throws Exception {
+        String email = email();
+        String subject = UUID.randomUUID().toString();
+        var proof = googleTicket(subject,email);
+        assertThat(request("/v1/auth/google/complete",Map.of(
+            "ticket",proof.get("ticket"),"clientSecret","x".repeat(43)),null).statusCode()).isEqualTo(401);
+        var response = request("/v1/auth/google/complete",proof,null);
+        assertThat(response.statusCode()).isEqualTo(200);
+        var session = data(response);
+        assertThat(session.path("account").path("emailVerified").asBoolean()).isTrue();
+        assertThat(request("/v1/auth/me",null,session.path("token").asText()).statusCode()).isEqualTo(200);
+        assertThat(request("/v1/auth/google/complete",proof,null).statusCode()).isEqualTo(401);
+        assertThat(request("/v1/auth/login",Map.of("email",email,"password",password),null).statusCode()).isEqualTo(401);
+        var repeat = request("/v1/auth/google/complete",googleTicket(subject,email),null);
+        assertThat(repeat.statusCode()).isEqualTo(200);
+        assertThat(data(repeat).path("account").path("id")).isEqualTo(session.path("account").path("id"));
+    }
+    @Test void googleDoesNotTakeOverAnExistingPasswordAccount() throws Exception {
+        String email = email();
+        register(email);
+        var proof = googleTicket(UUID.randomUUID().toString(),email);
+        var response = request("/v1/auth/google/complete",proof,null);
+        assertThat(response.statusCode()).isEqualTo(409);
+        assertThat(data(response).path("code").asText()).isEqualTo("GOOGLE_EMAIL_IN_USE");
+        assertThat(request("/v1/auth/login",Map.of("email",email,"password",password),null).statusCode()).isEqualTo(200);
+    }
     @Test void registrationLoginLogoutAndHashedCredentials() throws Exception {
         String email = email(); var session = register(email.toUpperCase(Locale.ROOT));
         String token = session.path("token").asText();

@@ -86,7 +86,11 @@ npm run web
 # Or: npm run android
 ```
 
-The opening screen offers sign-in, registration and an explicit **Explore sample data** option. Sample changes reset on reload and are not persisted as health records. No Expo account or backend is needed for sample data. Web development defaults to `http://localhost:8080` for account access; native builds require `EXPO_PUBLIC_API_URL`. Browser reminder sound must be enabled again after each page reload.
+On the sign-in screen, choose **Sign up** to create an account with your name, email address and password. The opening screen also offers **Explore sample data**. Sample changes reset on reload and are not persisted as health records. No Expo account or backend is needed for sample data. Web development defaults to `http://localhost:8080` for account access; native builds require `EXPO_PUBLIC_API_URL`. Browser reminder sound must be enabled again after each page reload.
+
+**Sign in with Google** uses Google OpenID Connect. **Sign in with SMS code** uses Twilio Verify. Both options require backend configuration in the root `.env`. [Set up Google and Twilio](deliverables/Authentication_Development_Setup.md)
+
+Provider sign-in verification: all 16 backend auth integration tests passed on H2 and PostgreSQL 17.11. The Google tests stub the external token exchange and verify the account and one-time ticket behavior. All 44 mobile tests, lint, type checking, formatting for changed files and Expo web and Android Hermes exports passed. The local API applied migration V9 and returned HTTP 503 for both unconfigured provider start endpoints. Live Google sign-in, SMS delivery and physical-device return still require provider credentials and device verification.
 
 ## Try medicine reminders
 
@@ -200,7 +204,7 @@ Authentication verification (20 October 2026): all 28 backend tests pass with H2
 
 The current app is an online development slice, with an in-memory UI demonstration mode. The following requirements remain pending:
 
-- Email ownership verification, real SMS provider activation/device verification, account recovery, independent-adult transitions and granular member permissions. Email/password sessions and bounded development OTP flows are implemented; development phone codes do not prove number ownership. Managed-profile sharing supports explicit invitation, recipient acceptance and final owner approval.
+- Password-account email ownership verification, account recovery, live Google and Twilio verification, independent-adult transitions and granular member permissions. Managed-profile sharing supports explicit invitation, recipient acceptance and final owner approval.
 - Prescription upload/extraction and mandatory source review, immutable instruction editing, pause/resume, duplicate-medicine review and PRN flows.
 - Native physical-device validation, server-enforced designated device transfer, snooze and background coverage replenishment. Local adapters, permission setup and foreground reconciliation are implemented.
 - Encrypted offline database, durable outbound queue, change cursors/tombstones, retry/backoff, preserved conflicting submissions and conflict-resolution UI.

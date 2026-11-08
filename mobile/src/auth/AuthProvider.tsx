@@ -8,7 +8,15 @@ import {
   type ReactNode,
 } from 'react';
 import { Platform } from 'react-native';
-import { AuthApi, AuthHttpError, type Session, type Challenge, type Account } from './api';
+import {
+  AuthApi,
+  AuthHttpError,
+  type Session,
+  type Challenge,
+  type Account,
+  type AuthOptions,
+  type GoogleStart,
+} from './api';
 import { sessionStorage } from './sessionStorage';
 import { PlatformReminderAdapter } from '../reminders/adapter';
 import { DOSE_PREFIX, TEST_PREFIX } from '../reminders/types';
@@ -25,6 +33,9 @@ type AuthState = {
   apiUrl: string;
   login(email: string, password: string): Promise<void>;
   register(displayName: string, email: string, password: string): Promise<void>;
+  getOptions(): Promise<AuthOptions>;
+  startGoogle(): Promise<GoogleStart>;
+  completeGoogle(ticket: string, clientSecret: string): Promise<void>;
   startPhone(phone: string): Promise<Challenge>;
   verifyPhone(challengeId: string, code: string, displayName: string): Promise<void>;
   logout(): Promise<void>;
@@ -113,14 +124,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, [api, clearReminders, restoreEvidence]);
-  const accept = async (next: Session) => {
-    await clearReminders();
-    await sessionStorage.write(JSON.stringify(next));
-    restoreEvidence(next.account.id);
-    setDemo(false);
-    setNotice(null);
-    setSession(next);
-  };
+  const accept = useCallback(
+    async (next: Session) => {
+      await clearReminders();
+      await sessionStorage.write(JSON.stringify(next));
+      restoreEvidence(next.account.id);
+      setDemo(false);
+      setNotice(null);
+      setSession(next);
+    },
+    [clearReminders, restoreEvidence],
+  );
+  const getOptions = useCallback(
+    () => api.request<AuthOptions>(`/options?web=${Platform.OS === 'web'}`),
+    [api],
+  );
+  const completeGoogle = useCallback(
+    async (ticket: string, clientSecret: string) =>
+      accept(await api.request<Session>('/google/complete', { ticket, clientSecret })),
+    [api, accept],
+  );
   const invalidate = useCallback(() => {
     if (clearing.current) return;
     clearing.current = true;
@@ -173,7 +196,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           accept(await api.request<Session>('/login', { email, password })),
         register: async (displayName, email, password) =>
           accept(await api.request<Session>('/register', { displayName, email, password })),
-        startPhone: (phone) => api.request<Challenge>('/phone/start', { phone }),
+        getOptions,
+        startGoogle: () =>
+          api.request<GoogleStart>('/google/start', { web: Platform.OS === 'web' }),
+        completeGoogle,
+        startPhone: async (phone) => {
+          const challenge = await api.request<Challenge>('/phone/start', { phone });
+          if (challenge.developmentCode)
+            throw new Error('SMS verification is unavailable on this server.');
+          return challenge;
+        },
         verifyPhone: async (challengeId, code, displayName) =>
           accept(await api.request<Session>('/phone/verify', { challengeId, code, displayName })),
         logout,

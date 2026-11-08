@@ -1,18 +1,44 @@
 # Accounts: development setup and examples
 
-## No-cost phone testing
+## Set up Google sign-in
 
-Development and test profiles use a local code generator. They never contact an SMS provider, even if provider credentials exist in the environment. The screen displays a labelled test code. There are no SMS charges or cloud builds in this workflow. Use fictional accounts and records.
+1. Open [Google Auth Platform](https://console.cloud.google.com/auth/overview) in your Google Cloud project. Set up Branding and Audience for Family Medicine. For a personal Gmail account, select **External** and add your Gmail address under **Test users** while the app is in Testing.
+2. Under **Clients**, create a **Web application** OAuth client. Add `http://localhost:8080/v1/auth/google/callback` under **Authorized redirect URIs**. Copy the client ID and secret into the existing gitignored `.env` in the repository root.
 
-Example: select phone sign-in, enter a fictional name and `+15555550100`, request a code, then enter the displayed development code. It expires after five minutes and works once. Five failed attempts require a new challenge. Requests are limited by phone and source address. These accounts are marked **ownership not verified**; development codes cannot access verified phone accounts.
+   ```dotenv
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   GOOGLE_CALLBACK_URL=http://localhost:8080/v1/auth/google/callback
+   GOOGLE_WEB_RETURN_URL=http://localhost:8081/
+   ```
 
-Real SMS is disabled by default outside development too. A server-side provider adapter exists, but enabling paid verification is outside the current development setup. No provider account or credentials are required now.
+3. Restart the backend using `scripts/Start-Backend.ps1`. Start Expo web and open `http://localhost:8081/`. Use exactly the host and port in `GOOGLE_WEB_RETURN_URL` when starting Google sign-in so the browser can recover the original attempt. Select **Sign in with Google**, then pick a test account. [Google OAuth web-server setup](https://developers.google.com/identity/protocols/oauth2/web-server)
+
+For an installed Android or iOS build, use an HTTPS backend callback that the device's browser can reach, and register that exact URL in Google Auth Platform. Point `EXPO_PUBLIC_API_URL` at the reachable API. After Google's account chooser, tap **Return to Family Medicine** in the browser. The installed app must register the existing `family-medicine` scheme. Keep the app running while the browser is open. [Expo Linking](https://docs.expo.dev/versions/v58.0.0/sdk/linking/)
+
+Google sign-in uses OpenID Connect with authorization code, PKCE, state and nonce. It requests identity information only. Google accounts are matched by Google's stable subject ID. If the email is already used by a password account, sign in with that original method. Account linking is a separate operation.
+
+## Set up real SMS verification
+
+1. In [Twilio Verify](https://console.twilio.com/), create a Verify service for Family Medicine. Copy the Verify Service SID (`VA…`), Account SID (`AC…`) and Auth Token into the backend's root `.env`.
+
+   ```dotenv
+   SMS_SIGN_IN_ENABLED=true
+   TWILIO_ACCOUNT_SID=your-account-sid
+   TWILIO_AUTH_TOKEN=your-auth-token
+   TWILIO_VERIFY_SERVICE_SID=your-verify-service-sid
+   ```
+
+2. Enable the destination country in **Verify → Settings → Geo permissions**. For a trial account, register and verify the test recipient in Twilio. Verify sends real SMS and can incur charges. [Twilio Verify quickstart](https://www.twilio.com/docs/verify/quickstarts) · [Verify geographic permissions](https://www.twilio.com/docs/verify/verify-countries-and-regions-deliverability)
+3. Restart the backend and reload or reopen the app. Select **Sign in with SMS code**, enter your name and mobile number with country code, then enter the code received on your phone. A first successful verification creates a phone account. Later sign-ins with that number use the same account.
+
+The app's SMS option uses Twilio Verify. Generated codes run only under the automated `test` profile. Both provider options stay disabled until their respective server settings are present. Keep provider secrets out of the mobile environment and source control.
 
 ## Email registration and login
 
 Example: choose Create account, use `care-example@example.invalid`, enter a fictional name and matching passwords of at least 12 characters. The server accepts at most 72 UTF-8 password bytes. Registration signs in to an empty account. Add a family profile to start its medicine plan. Sign out in Settings, then sign in using the same email and password.
 
-Passwords are hashed with BCrypt, not stored as plain text. Sessions last 12 hours; the database stores token hashes. Logout revokes the current token when the server is reachable. Native session credentials use SecureStore. Web sessions stay in memory and require sign-in after a reload.
+Passwords are hashed with BCrypt. Sessions last 12 hours and the database stores token hashes. Logout revokes the current token when the server is reachable. Native session credentials use SecureStore. Web sessions are stored in the current browser tab and survive a reload.
 
 Email ownership is not verified yet. Email verification and forgotten-password recovery remain unfinished. Phone accounts and email accounts are separate; they are not linked by matching names.
 
@@ -32,7 +58,7 @@ If offline logout cannot reach the server, the UI explains that local logout suc
 
 ## Remaining release work
 
-Email ownership verification, recovery, production SMS activation, physical-device checks, durable encrypted offline data, independent-adult transitions and granular grants remain open. Managed-profile sharing is now available through invitation, recipient acceptance and final owner approval; see [family access examples](Family_Access_Development_Setup.md). Expired session/challenge and rate-limit row cleanup also needs operational scheduling. Test codes and development authentication must never be exposed as verified production identity.
+Password-account email verification and recovery, live provider and physical-device checks, durable encrypted offline data, independent-adult transitions and granular grants remain open. Managed-profile sharing is available through invitation, recipient acceptance and final owner approval. Expired session/challenge and rate-limit row cleanup needs operational scheduling. [Family access examples](Family_Access_Development_Setup.md)
 
 ## Actual verification
 

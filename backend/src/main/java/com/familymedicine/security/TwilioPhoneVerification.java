@@ -12,19 +12,21 @@ import org.springframework.stereotype.Component;
 import org.springframework.context.annotation.Profile;
 
 @Component
-@Profile("!dev & !test")
+@Profile("!test")
 public class TwilioPhoneVerification implements PhoneVerification {
     private final String account, secret, service;
     private final boolean enabled;
     private final JsonMapper json = JsonMapper.builder().build();
     public TwilioPhoneVerification(@Value("${TWILIO_ACCOUNT_SID:}") String account,
             @Value("${TWILIO_AUTH_TOKEN:}") String secret, @Value("${TWILIO_VERIFY_SERVICE_SID:}") String service,
-            @Value("${app.auth.sms-enabled:false}") boolean enabled) {
+            @Value("${SMS_SIGN_IN_ENABLED:${app.auth.sms-enabled:false}}") boolean enabled) {
         this.account = account; this.secret = secret; this.service = service;
         this.enabled = enabled;
     }
     public boolean available() { return enabled && account.matches("AC[0-9a-fA-F]{32}") && !secret.isBlank() && service.matches("VA[0-9a-fA-F]{32}"); }
-    public void send(String phone) { call("Verifications", "To=" + encode(phone) + "&Channel=sms"); }
+    public void send(String phone) {
+        if (!"pending".equals(call("Verifications", "To=" + encode(phone) + "&Channel=sms"))) throw unavailable();
+    }
     public boolean verify(String phone, String code) {
         return "approved".equals(call("VerificationCheck", "To=" + encode(phone) + "&Code=" + encode(code)));
     }

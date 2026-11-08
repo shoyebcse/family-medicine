@@ -1,12 +1,14 @@
-import { useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Body, Button, Field, Heading, Panel, colors } from '../components/ui';
 import { useAuth } from './AuthProvider';
-import type { Challenge } from './api';
+import type { AuthOptions, Challenge } from './api';
+import { openGoogle, subscribeToGoogleReturn, takeWebGoogleReturn } from './googleRedirect';
 
 export function AuthScreen() {
   const auth = useAuth();
+  const { getOptions, completeGoogle } = auth;
   const [mode, setMode] = useState<'login' | 'register' | 'phone'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -17,8 +19,11 @@ export function AuthScreen() {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [options, setOptions] = useState<AuthOptions | null>(null);
+  const [optionsFailed, setOptionsFailed] = useState(false);
+  const nativeGoogleSecret = useRef<string | null>(null);
   const submitting = useRef(false);
-  const run = async (action: () => Promise<void>) => {
+  const run = useCallback(async (action: () => Promise<void>) => {
     if (submitting.current) return;
     submitting.current = true;
     setBusy(true);
@@ -31,7 +36,40 @@ export function AuthScreen() {
       submitting.current = false;
       setBusy(false);
     }
-  };
+  }, []);
+  const loadOptions = useCallback(
+    () =>
+      getOptions().then(
+        (result) => {
+          setOptions(result);
+          setOptionsFailed(false);
+        },
+        () => setOptionsFailed(true),
+      ),
+    [getOptions],
+  );
+  useEffect(() => {
+    void loadOptions();
+  }, [loadOptions]);
+  useEffect(() => {
+    const finish = (ticket: string | null, secret: string | null) =>
+      void run(async () => {
+        if (!ticket || !secret)
+          throw new Error('Google sign-in was cancelled or expired. Try again.');
+        await completeGoogle(ticket, secret);
+      });
+    if (Platform.OS === 'web') {
+      const returned = takeWebGoogleReturn();
+      if (returned) finish(returned.ticket, returned.secret);
+      return;
+    }
+    return subscribeToGoogleReturn((ticket) => {
+      const secret = nativeGoogleSecret.current;
+      if (!secret) return;
+      nativeGoogleSecret.current = null;
+      finish(ticket, secret);
+    });
+  }, [completeGoogle, run]);
   const submitCredentials = () =>
     void run(async () => {
       if (mode === 'register') {
@@ -62,13 +100,17 @@ export function AuthScreen() {
         <View style={{ width: '100%', maxWidth: 480, gap: 16 }}>
           <Heading
             title="Welcome to Family Medicine"
-            subtitle="Sign in to your own medicine records, or explore fictional sample data."
+            subtitle={
+              mode === 'register'
+                ? 'Create an account to manage your medicine records.'
+                : 'Sign in to your own medicine records, or explore fictional sample data.'
+            }
           />
           <Panel>
             <Heading
               title={
                 mode === 'register'
-                  ? 'Create your account'
+                  ? 'Sign up'
                   : mode === 'phone'
                     ? 'Sign in with your phone'
                     : 'Sign in'
@@ -101,11 +143,7 @@ export function AuthScreen() {
                 />
                 {challenge && (
                   <>
-                    <Body>
-                      {challenge.developmentCode
-                        ? `Development only — no SMS sent and no charge. Test code: ${challenge.developmentCode}. Use fictional phone accounts; this does not verify phone ownership.`
-                        : 'Code requested. Enter the SMS code before it expires.'}
-                    </Body>
+                    <Body>Enter the SMS verification code before it expires.</Body>
                     <Field
                       label="Verification code"
                       value={code}
@@ -219,17 +257,43 @@ export function AuthScreen() {
             <Button
               secondary
               disabled={busy}
-              title={
-                mode === 'register' ? 'Already registered? Sign in' : 'Create an email account'
-              }
+              title={mode === 'register' ? 'Already registered? Sign in' : 'Sign up'}
               onPress={() => changeMode(mode === 'register' ? 'login' : 'register')}
             />
+            {mode !== 'phone' && (
+              <Button
+                secondary
+                disabled={busy || !options?.googleEnabled}
+                title="Sign in with Google"
+                onPress={() =>
+                  void run(async () => {
+                    const attempt = await auth.startGoogle();
+                    if (Platform.OS !== 'web') nativeGoogleSecret.current = attempt.clientSecret;
+                    await openGoogle(attempt.authorizationUrl, attempt.clientSecret);
+                  })
+                }
+              />
+            )}
             <Button
               secondary
-              disabled={busy}
-              title={mode === 'phone' ? 'Use email and password' : 'Use mobile number and OTP'}
+              disabled={busy || (mode !== 'phone' && !options?.phoneOtpEnabled)}
+              title={mode === 'phone' ? 'Use email and password' : 'Sign in with SMS code'}
               onPress={() => changeMode(mode === 'phone' ? 'login' : 'phone')}
             />
+            {options && mode !== 'phone' && !options.googleEnabled && (
+              <Body>Google sign-in is unavailable on this server.</Body>
+            )}
+            {options && mode !== 'phone' && !options.phoneOtpEnabled && (
+              <Body>SMS sign-in is unavailable on this server.</Body>
+            )}
+            {optionsFailed && (
+              <Button
+                secondary
+                disabled={busy}
+                title="Reload sign-in options"
+                onPress={loadOptions}
+              />
+            )}
           </Panel>
           <Button
             secondary

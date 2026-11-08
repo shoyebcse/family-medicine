@@ -37,7 +37,8 @@ public class SecurityConfig {
             .csrf(c -> c.disable()) // Stateless bearer API; no cookie authentication.
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a -> a.requestMatchers("/health", "/v1/auth/options", "/v1/auth/register", "/v1/auth/login",
-                "/v1/auth/phone/start", "/v1/auth/phone/verify").permitAll().anyRequest().authenticated())
+                "/v1/auth/phone/start", "/v1/auth/phone/verify", "/v1/auth/google/start",
+                "/v1/auth/google/callback", "/v1/auth/google/complete").permitAll().anyRequest().authenticated())
             .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
                 res.setStatus(401); res.setContentType("application/json");
                 res.getWriter().write("{\"code\":\"AUTHENTICATION_REQUIRED\",\"message\":\"Sign in is required\"}");

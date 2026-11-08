@@ -10,7 +10,7 @@ if (-not $settings.ContainsKey('DEV_API_TOKEN') -or $settings['DEV_API_TOKEN'].L
 }
 
 $previousSettings = @{}
-$names = @('SPRING_PROFILES_ACTIVE', 'DATABASE_URL', 'DATABASE_USER', 'DATABASE_PASSWORD', 'DEV_API_TOKEN', 'OPENAI_API_KEY', 'PRESCRIPTION_EXTRACTION_ENABLED', 'PRESCRIPTION_ENCRYPTION_KEY', 'OPENAI_LOG_RESPONSES', 'PRESCRIPTION_EXTRACTION_MODE')
+$names = @('SPRING_PROFILES_ACTIVE', 'DATABASE_URL', 'DATABASE_USER', 'DATABASE_PASSWORD', 'DEV_API_TOKEN') + $optionalDevelopmentSettings
 foreach ($name in $names) { $previousSettings[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 try {
     $env:SPRING_PROFILES_ACTIVE = 'dev'
@@ -18,7 +18,7 @@ try {
     $env:DATABASE_USER = 'family_medicine'
     $env:DATABASE_PASSWORD = $settings['DATABASE_PASSWORD']
     $env:DEV_API_TOKEN = $settings['DEV_API_TOKEN']
-    foreach ($setting in @('OPENAI_API_KEY', 'PRESCRIPTION_EXTRACTION_ENABLED', 'PRESCRIPTION_ENCRYPTION_KEY', 'OPENAI_LOG_RESPONSES', 'PRESCRIPTION_EXTRACTION_MODE')) {
+    foreach ($setting in $optionalDevelopmentSettings) {
         if ($settings.ContainsKey($setting)) { [Environment]::SetEnvironmentVariable($setting, $settings[$setting], 'Process') }
     }
     Write-Output 'Starting the development API on localhost with PostgreSQL. Credentials are read from the gitignored .env.'

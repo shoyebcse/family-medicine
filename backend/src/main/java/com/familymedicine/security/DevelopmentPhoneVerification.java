@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 /** Local test identities only: NEVER sends SMS and NEVER establishes phone ownership. */
 @Component
-@Profile({"dev", "test"})
+@Profile("test")
 public class DevelopmentPhoneVerification implements PhoneVerification {
     private record Code(String digest, String value, Instant expires) {}
     private final ConcurrentHashMap<String,Code> codes = new ConcurrentHashMap<>();

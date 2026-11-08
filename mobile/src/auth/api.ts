@@ -8,6 +8,8 @@ export type Account = {
 };
 export type Session = { token: string; expiresAt: string; account: Account };
 export type Challenge = { challengeId: string; expiresAt: string; developmentCode?: string };
+export type AuthOptions = { phoneOtpEnabled: boolean; googleEnabled: boolean };
+export type GoogleStart = { authorizationUrl: string; clientSecret: string };
 export class AuthHttpError extends Error {
   constructor(
     message: string,
